@@ -46,8 +46,6 @@ func Discover(dir string) ([]analyzer.Package, []string, error) {
 	return dedupe(pkgs), found, nil
 }
 
-// --- npm: package-lock.json v2/v3 ---
-
 type npmLock struct {
 	LockfileVersion int `json:"lockfileVersion"`
 	Packages        map[string]struct {
@@ -58,7 +56,6 @@ type npmLock struct {
 		Version string `json:"version"`
 		Link    bool   `json:"link"`
 	} `json:"packages"`
-	// v1 fallback
 	Dependencies map[string]struct {
 		Version string `json:"version"`
 	} `json:"dependencies"`
@@ -77,7 +74,7 @@ func parseNPMLock(path string) ([]analyzer.Package, error) {
 	if len(lock.Packages) > 0 { // v2/v3
 		for key, entry := range lock.Packages {
 			if key == "" || entry.Link || entry.Version == "" {
-				continue // root project or workspace symlink
+				continue
 			}
 			name := npmNameFromKey(key)
 			if entry.Name != "" { // npm alias: registry name differs from the install path
@@ -113,8 +110,6 @@ func npmNameFromKey(key string) string {
 	}
 	return key[i+len(marker):]
 }
-
-// --- PyPI: requirements.txt (pinned entries only) ---
 
 var reReqLine = regexp.MustCompile(`^\s*([A-Za-z0-9._-]+)\s*(?:\[[^\]]*\])?\s*==\s*([A-Za-z0-9.!+_-]+)`)
 

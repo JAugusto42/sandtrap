@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"time"
 )
@@ -49,15 +48,8 @@ func decodeScripts(raw json.RawMessage) map[string]string {
 
 // Fetch implements Client for the npm ecosystem.
 func (c *NPMClient) Fetch(ctx context.Context, name, version string) (*Artifact, error) {
-	// The full packument gives us publish times for every version — needed
-	// for the "fresh version" heuristic that catches compromise windows.
 	u := c.BaseURL + "/" + url.PathEscape(name)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Accept", "application/json")
-	resp, err := httpClient.Do(req)
+	resp, err := getWithRetry(ctx, u, map[string]string{"Accept": "application/json"})
 	if err != nil {
 		return nil, err
 	}

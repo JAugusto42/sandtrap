@@ -3,7 +3,6 @@
 package report
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -11,9 +10,9 @@ import (
 	"time"
 
 	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
+	"github.com/sandtrap-sh/sandtrap/internal/runlog"
 )
 
-// ANSI helpers — disabled automatically when not writing to a terminal.
 var useColor = isTerminal(os.Stdout)
 
 func isTerminal(f *os.File) bool {
@@ -73,8 +72,9 @@ type Summary struct {
 }
 
 // Collect drains the results channel, streaming per-package lines to w as
-// they arrive (quiet=false) and returning the aggregated summary.
-func Collect(w io.Writer, ch <-chan analyzer.Result, quiet bool) *Summary {
+// they arrive (quiet=false), recording every outcome to the execution log,
+// and returning the aggregated summary.
+func Collect(w io.Writer, ch <-chan analyzer.Result, quiet bool, lg *runlog.Logger) *Summary {
 	start := time.Now()
 	s := &Summary{ByRisk: map[string]int{}}
 	for res := range ch {
@@ -91,6 +91,7 @@ func Collect(w io.Writer, ch <-chan analyzer.Result, quiet bool) *Summary {
 		if !quiet {
 			streamLine(w, res)
 		}
+		logResult(lg, res)
 	}
 	s.Elapsed = time.Since(start)
 	sort.SliceStable(s.Results, func(i, j int) bool {
@@ -150,13 +151,6 @@ func Terminal(w io.Writer, s *Summary) {
 	}
 }
 
-// JSON writes the machine-readable report.
-func JSON(w io.Writer, s *Summary) error {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	return enc.Encode(s)
-}
-
 // ExitCode implements CI gating: 0 below threshold, 2 at/above it,
 // 3 when analysis errors occurred and failOnError is set.
 func ExitCode(s *Summary, failOn analyzer.RiskLevel, failOnError bool) int {
@@ -184,4 +178,26 @@ func ParseRisk(s string) (analyzer.RiskLevel, error) {
 		return analyzer.RiskClean, nil
 	}
 	return 0, fmt.Errorf("invalid --fail-on value %q (critical|high|medium|low|never)", s)
+}
+
+// logResult records one package outcome and each of its findings.
+func logResult(lg *runlog.Logger, res analyzer.Result) {
+	if !lg.Enabled() {
+		return
+	}
+	switch {
+	case res.Err != "":
+		lg.Event("WARN", "%s error=%q duration=%dms", res.Package, res.Err, res.DurationMS)
+	default:
+		lg.Event("PKG", "%s risk=%s score=%d findings=%d suppressed=%d files=%d duration=%dms",
+			res.Package, res.Risk, res.Score, len(res.Findings), res.Suppressed, res.FilesScanned, res.DurationMS)
+	}
+	for _, f := range res.Findings {
+		loc := ""
+		if f.File != "" {
+			loc = " file=" + f.File
+		}
+		lg.Event("FIND", "%s %s rule=%s title=%q%s evidence=%q",
+			res.Package, f.Severity, f.RuleID, f.Title, loc, f.Evidence)
+	}
 }

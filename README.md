@@ -27,7 +27,10 @@ sandtrap check npm some-package@1.2.3
 sandtrap check pypi somepkg@4.5.6
 
 # CI gating: fail the build on HIGH or worse, machine-readable report
-sandtrap scan --fail-on high --format json . > sandtrap-report.json
+sandtrap scan --fail-on high --format json --output sandtrap-report.json .
+
+# SARIF for GitHub code scanning (findings appear in the Security tab)
+sandtrap scan --format sarif --output sandtrap.sarif .
 ```
 
 Exit codes: `0` ok · `2` risk threshold reached · `3` analysis errors (with `--fail-on-error`) · `64` usage.
@@ -38,8 +41,34 @@ Exit codes: `0` ok · `2` risk threshold reached · `3` analysis errors (with `-
 - name: Supply chain scan
   run: |
     go install github.com/sandtrap-sh/sandtrap/cmd/sandtrap@latest
-    sandtrap scan --fail-on high .
+    sandtrap scan --fail-on high --format sarif --output sandtrap.sarif .
+- name: Upload to GitHub code scanning
+  if: always()
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: sandtrap.sarif
 ```
+
+## Report formats
+
+- **text** (default) — colored terminal report for humans.
+- **json** — structured report (`schema: sandtrap-report/1`): `tool`, `scan` (targets, duration, error/suppressed counts, configured gate), `summary` (by-risk histogram, worst risk), `rules` (full description + remediation + references for every rule that fired, referenced by `rule_id`), and `results` (per-package verdict, score, findings with severity, file path inside the archive, and redacted evidence excerpt). Severities and risks serialize as strings (`"CRITICAL"`), never ordinals.
+- **sarif** — SARIF 2.1.0 for GitHub code scanning and compatible dashboards: one result per finding (CRITICAL/HIGH→error, MEDIUM→warning, LOW/INFO→note), the lockfile as physical location, the exact in-archive file as logical location, and the rule catalog embedded in the driver.
+
+Use `--output FILE` with any format; streaming progress stays on stderr so pipes and files receive only the report.
+
+## Execution log and verbose mode
+
+The report answers "what is the risk state of my dependencies"; the **execution log** answers "what exactly did this run do" — the artifact you attach to CI or an incident timeline. `--log FILE` writes a timestamped record of the run configuration, every package analyzed (verdict, score, files inspected, duration), every finding with evidence, every fetch error, and the final summary with exit code. `--verbose` mirrors those events to stderr live and, if no `--log` is given, defaults the file to `sandtrap.log`. Report, execution log and terminal streaming are three independent outputs:
+
+```sh
+sandtrap scan . --verbose --format json --output report.json
+# → report.json (risk report) + sandtrap.log (execution record) + live progress on stderr
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full architecture walkthrough and step-by-step guides for adding lockfile formats, ecosystems, detection rules and output formats.
 
 ## What it detects
 

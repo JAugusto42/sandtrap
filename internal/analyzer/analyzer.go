@@ -117,6 +117,7 @@ func (an *Analyzer) analyzeOne(ctx context.Context, pkg Package) Result {
 	if err != nil {
 		res.Err = err.Error()
 		res.Elapsed = time.Since(start)
+		res.DurationMS = res.Elapsed.Milliseconds()
 		return res
 	}
 	res.FilesScanned = len(art.Files)
@@ -138,8 +139,6 @@ func (an *Analyzer) analyzeOne(ctx context.Context, pkg Package) Result {
 		}
 		res.Findings = kept
 	}
-
-	// Sort findings by severity (worst first) and compute the verdict.
 	sort.SliceStable(res.Findings, func(i, j int) bool {
 		return res.Findings[i].Severity > res.Findings[j].Severity
 	})
@@ -161,5 +160,6 @@ func (an *Analyzer) analyzeOne(ctx context.Context, pkg Package) Result {
 	}
 	res.Risk = riskFromScore(res.Score)
 	res.Elapsed = time.Since(start)
+	res.DurationMS = res.Elapsed.Milliseconds()
 	return res
 }

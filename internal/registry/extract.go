@@ -138,9 +138,9 @@ func extractZip(raw []byte) ([]File, error) {
 // transient network failures (HTTP/2 stream resets, timeouts, 5xx).
 func download(url string) ([]byte, error) {
 	var lastErr error
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := 0; attempt < 3; attempt++ {
 		if attempt > 0 {
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(time.Duration(attempt) * 700 * time.Millisecond)
 		}
 		buf, retryable, err := downloadOnce(url)
 		if err == nil {

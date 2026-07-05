@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -41,11 +40,7 @@ func (c *PyPIClient) Fetch(ctx context.Context, name, version string) (*Artifact
 	}
 	endpoint += "/json"
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := httpClient.Do(req)
+	resp, err := getWithRetry(ctx, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -67,9 +62,6 @@ func (c *PyPIClient) Fetch(ctx context.Context, name, version string) (*Artifact
 	if len(rel.URLs) == 0 {
 		return nil, fmt.Errorf("pypi %s@%s: no downloadable artifacts", name, version)
 	}
-
-	// Prefer sdist; setup.py / build hooks in the sdist are the code that
-	// runs on `pip install`, which is where install-time payloads live.
 	chosen := rel.URLs[0]
 	for _, u := range rel.URLs {
 		if u.PackageType == "sdist" {
@@ -98,9 +90,6 @@ func (c *PyPIClient) Fetch(ctx context.Context, name, version string) (*Artifact
 	if err != nil && len(files) == 0 {
 		return nil, fmt.Errorf("pypi extract: %w", err)
 	}
-
-	// Surface setup.py / setup.cfg presence as pseudo install scripts so the
-	// install-script heuristic treats pip and npm uniformly.
 	for _, f := range files {
 		if f.Path == "setup.py" {
 			if meta.InstallScripts == nil {

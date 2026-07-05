@@ -47,7 +47,7 @@ func parseYarnLock(path string) ([]analyzer.Package, error) {
 		if line[0] != ' ' && line[0] != '\t' && strings.HasSuffix(strings.TrimSpace(line), ":") {
 			currentName, isWorkspace = "", false
 			header := strings.TrimSuffix(strings.TrimSpace(line), ":")
-			if header == "__metadata" { // berry preamble block
+			if header == "__metadata" {
 				continue
 			}
 			// Multiple specs may share one entry; all resolve to the same
@@ -92,7 +92,7 @@ func parseYarnLock(path string) ([]analyzer.Package, error) {
 					Ecosystem: analyzer.NPM, Name: currentName, Version: ver, Source: path,
 				})
 			}
-			currentName = "" // one version per entry
+			currentName = ""
 		}
 	}
 	return pkgs, sc.Err()

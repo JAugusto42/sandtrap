@@ -1,6 +1,9 @@
 package analyzer
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Ecosystem identifies the package registry a dependency belongs to.
 type Ecosystem string
@@ -47,6 +50,12 @@ func (s Severity) String() string {
 	default:
 		return "INFO"
 	}
+}
+
+// MarshalJSON renders severities as their human-readable names — JSON
+// consumers should never need to know internal ordinal values.
+func (s Severity) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
 }
 
 // Score converts a severity into the weight used for the package risk score.
@@ -107,16 +116,22 @@ func (r RiskLevel) String() string {
 
 // Result is the full analysis outcome for one package.
 type Result struct {
-	Package  Package       `json:"package"`
-	Risk     RiskLevel     `json:"risk"`
-	Score    int           `json:"score"`
-	Findings []Finding     `json:"findings,omitempty"`
-	Err      string        `json:"error,omitempty"`
-	Elapsed  time.Duration `json:"elapsed_ns"`
+	Package    Package       `json:"package"`
+	Risk       RiskLevel     `json:"risk"`
+	Score      int           `json:"score"`
+	Findings   []Finding     `json:"findings,omitempty"`
+	Err        string        `json:"error,omitempty"`
+	Elapsed    time.Duration `json:"-"`
+	DurationMS int64         `json:"duration_ms"`
 	// FilesScanned is how many files inside the archive were inspected.
 	FilesScanned int `json:"files_scanned"`
 	// Suppressed counts findings accepted by the baseline file.
 	Suppressed int `json:"suppressed,omitempty"`
+}
+
+// MarshalJSON renders risk levels as their human-readable names.
+func (r RiskLevel) MarshalJSON() ([]byte, error) {
+	return json.Marshal(r.String())
 }
 
 // riskFromScore maps an accumulated score to a verdict.

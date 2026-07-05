@@ -19,6 +19,7 @@ import (
 	"github.com/sandtrap-sh/sandtrap/internal/heuristics"
 	"github.com/sandtrap-sh/sandtrap/internal/lockfile"
 	"github.com/sandtrap-sh/sandtrap/internal/report"
+	"github.com/sandtrap-sh/sandtrap/internal/runlog"
 )
 
 // Version is stamped at build time via -ldflags.
@@ -33,12 +34,15 @@ Usage:
 
 Flags (scan & check):
   --workers N          concurrent workers (default: 2×CPU, max 16)
-  --format FMT         output format: text|json (default text)
+  --format FMT         output format: text|json|sarif (default text)
+  --output FILE        write the report to FILE instead of stdout
   --fail-on LEVEL      exit 2 at/above: critical|high|medium|low|never (default high)
   --fail-on-error      exit 3 if any package could not be analyzed
   --timeout DUR        per-package timeout (default 90s)
   --quiet              suppress streaming progress lines
   --baseline FILE      accepted-findings file (default: .sandtrap.json in scan dir)
+  --verbose            detailed per-package/per-finding events on stderr (implies --log)
+  --log FILE           write a timestamped execution log (default with --verbose: sandtrap.log)
   --write-baseline     accept all current findings: write them to the baseline and exit 0
 
 Exit codes: 0 ok · 2 risk threshold reached · 3 analysis errors · 64 usage
@@ -75,6 +79,25 @@ func Run(args []string) int {
 	}
 }
 
+// parseInterleaved parses flags that may appear before or after positional
+// arguments. Go's flag package stops at the first positional, which silently
+// ignores everything in `sandtrap scan . --format json` — a footgun no CLI
+// should ship with.
+func parseInterleaved(fs *flag.FlagSet, args []string) ([]string, error) {
+	var positional []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			return nil, err
+		}
+		args = fs.Args()
+		if len(args) == 0 {
+			return positional, nil
+		}
+		positional = append(positional, args[0])
+		args = args[1:]
+	}
+}
+
 type commonFlags struct {
 	workers       int
 	format        string
@@ -82,16 +105,23 @@ type commonFlags struct {
 	failOnError   bool
 	timeout       time.Duration
 	quiet         bool
+	output        string
+	verbose       bool
+	logPath       string
 	baselinePath  string
 	writeBaseline bool
 	// scanDir is set by runScan so execute can auto-detect .sandtrap.json.
 	scanDir string
+	targets []string
 }
 
 func bindCommon(fs *flag.FlagSet) *commonFlags {
 	c := &commonFlags{}
 	fs.IntVar(&c.workers, "workers", 0, "")
 	fs.StringVar(&c.format, "format", "text", "")
+	fs.StringVar(&c.output, "output", "", "")
+	fs.BoolVar(&c.verbose, "verbose", false, "")
+	fs.StringVar(&c.logPath, "log", "", "")
 	fs.StringVar(&c.failOn, "fail-on", "high", "")
 	fs.BoolVar(&c.failOnError, "fail-on-error", false, "")
 	fs.DurationVar(&c.timeout, "timeout", 90*time.Second, "")
@@ -101,7 +131,7 @@ func bindCommon(fs *flag.FlagSet) *commonFlags {
 	return c
 }
 
-// signalContext cancels on Ctrl-C / SIGTERM so a huge scan aborts cleanly.
+// signalContext cancels on Ctrl-C / SIGTERM.
 func signalContext() (context.Context, context.CancelFunc) {
 	return signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 }
@@ -110,12 +140,13 @@ func runScan(args []string) int {
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	c := bindCommon(fs)
-	if err := fs.Parse(args); err != nil {
+	pos, err := parseInterleaved(fs, args)
+	if err != nil {
 		return 64
 	}
 	dir := "."
-	if fs.NArg() > 0 {
-		dir = fs.Arg(0)
+	if len(pos) > 0 {
+		dir = pos[0]
 	}
 
 	pkgs, files, err := lockfile.Discover(dir)
@@ -128,6 +159,7 @@ func runScan(args []string) int {
 		return 64
 	}
 	c.scanDir = dir
+	c.targets = files
 	if !c.quiet {
 		fmt.Fprintf(os.Stderr, "sandtrap %s — scanning %d packages from %s\n\n",
 			Version, len(pkgs), strings.Join(files, ", "))
@@ -139,20 +171,21 @@ func runCheck(args []string) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	c := bindCommon(fs)
-	if err := fs.Parse(args); err != nil {
+	pos, err := parseInterleaved(fs, args)
+	if err != nil {
 		return 64
 	}
-	if fs.NArg() < 2 {
+	if len(pos) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: sandtrap check <npm|pypi> <package>[@version] [more packages...]")
 		return 64
 	}
-	eco := analyzer.Ecosystem(strings.ToLower(fs.Arg(0)))
+	eco := analyzer.Ecosystem(strings.ToLower(pos[0]))
 	if eco != analyzer.NPM && eco != analyzer.PyPI {
-		fmt.Fprintf(os.Stderr, "sandtrap: unsupported ecosystem %q (npm|pypi)\n", fs.Arg(0))
+		fmt.Fprintf(os.Stderr, "sandtrap: unsupported ecosystem %q (npm|pypi)\n", pos[0])
 		return 64
 	}
 	var pkgs []analyzer.Package
-	for _, spec := range fs.Args()[1:] {
+	for _, spec := range pos[1:] {
 		name, ver := splitSpec(spec)
 		pkgs = append(pkgs, analyzer.Package{Ecosystem: eco, Name: name, Version: ver, Source: "cli"})
 	}
@@ -175,6 +208,21 @@ func execute(pkgs []analyzer.Package, c *commonFlags) int {
 		return 64
 	}
 
+	// Execution log: --log writes it; --verbose mirrors it to stderr and,
+	// when no path is given, defaults the file to sandtrap.log so a verbose
+	// run always leaves an execution record behind.
+	if c.verbose && c.logPath == "" {
+		c.logPath = "sandtrap.log"
+	}
+	lg, err := runlog.New(c.logPath, c.verbose)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "sandtrap:", err)
+		return 64
+	}
+	defer lg.Close()
+	lg.Event("INFO", "sandtrap %s starting packages=%d targets=%v fail-on=%s format=%s workers=%d timeout=%s",
+		Version, len(pkgs), c.targets, c.failOn, c.format, c.workers, c.timeout)
+
 	// Baseline: explicit --baseline path, or .sandtrap.json in the scan dir.
 	var bl *baseline.Baseline
 	blPath := c.baselinePath
@@ -184,7 +232,6 @@ func execute(pkgs []analyzer.Package, c *commonFlags) int {
 		}
 	}
 	if blPath != "" && !c.writeBaseline {
-		var err error
 		if bl, err = baseline.Load(blPath); err != nil {
 			fmt.Fprintln(os.Stderr, "sandtrap:", err)
 			return 64
@@ -192,6 +239,7 @@ func execute(pkgs []analyzer.Package, c *commonFlags) int {
 		if !c.quiet {
 			fmt.Fprintf(os.Stderr, "sandtrap: using baseline %s\n", blPath)
 		}
+		lg.Event("INFO", "baseline loaded from %s", blPath)
 	}
 
 	ctx, cancel := signalContext()
@@ -207,8 +255,8 @@ func execute(pkgs []analyzer.Package, c *commonFlags) int {
 	}
 	an := analyzer.New(rules, opts)
 
-	quietStream := c.quiet || c.format == "json"
-	summary := report.Collect(os.Stderr, an.Run(ctx, pkgs), quietStream)
+	quietStream := c.quiet || (c.output == "" && c.format != "text")
+	summary := report.Collect(os.Stderr, an.Run(ctx, pkgs), quietStream, lg)
 
 	if c.writeBaseline {
 		out := blPath
@@ -227,16 +275,44 @@ func execute(pkgs []analyzer.Package, c *commonFlags) int {
 		return 0
 	}
 
-	switch c.format {
-	case "json":
-		if err := report.JSON(os.Stdout, summary); err != nil {
+	out := os.Stdout
+	if c.output != "" {
+		f, err := os.Create(c.output)
+		if err != nil {
 			fmt.Fprintln(os.Stderr, "sandtrap:", err)
 			return 1
 		}
-	default:
-		report.Terminal(os.Stdout, summary)
+		defer f.Close()
+		out = f
 	}
-	return report.ExitCode(summary, failOn, c.failOnError)
+	meta := report.Meta{Version: Version, Targets: c.targets, FailOn: c.failOn}
+	var rerr error
+	switch c.format {
+	case "json":
+		rerr = report.JSON(out, summary, meta)
+	case "sarif":
+		rerr = report.SARIF(out, summary, meta)
+	case "text":
+		report.Terminal(out, summary)
+	default:
+		fmt.Fprintf(os.Stderr, "sandtrap: unknown --format %q (text|json|sarif)\n", c.format)
+		return 64
+	}
+	if rerr != nil {
+		fmt.Fprintln(os.Stderr, "sandtrap:", rerr)
+		return 1
+	}
+	if c.output != "" && !c.quiet {
+		fmt.Fprintf(os.Stderr, "sandtrap: report written to %s\n", c.output)
+	}
+	code := report.ExitCode(summary, failOn, c.failOnError)
+	lg.Event("INFO", "scan complete scanned=%d errors=%d suppressed=%d by_risk=%v duration=%s exit=%d",
+		summary.Scanned, summary.Errors, summary.Suppressed, summary.ByRisk,
+		summary.Elapsed.Round(time.Millisecond), code)
+	if c.logPath != "" && !c.quiet {
+		fmt.Fprintf(os.Stderr, "sandtrap: execution log written to %s\n", c.logPath)
+	}
+	return code
 }
 
 func fileExists(p string) bool {

@@ -3,6 +3,7 @@ package registry
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -54,4 +55,40 @@ var httpClient = &http.Client{
 		MaxIdleConnsPerHost:   8,
 		ResponseHeaderTimeout: 30 * time.Second,
 	},
+}
+
+// getWithRetry performs a GET with up to three attempts and increasing
+// backoff. Long scans hit transient failures — HTTP/2 stream resets, header
+// timeouts, momentary IPv6 route loss — and a single flake must not turn
+// into a skipped package.
+func getWithRetry(ctx context.Context, url string, header map[string]string) (*http.Response, error) {
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(time.Duration(attempt) * 700 * time.Millisecond):
+			}
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range header {
+			req.Header.Set(k, v)
+		}
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if resp.StatusCode >= 500 {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("registry error: %s", resp.Status)
+			continue
+		}
+		return resp, nil
+	}
+	return nil, lastErr
 }
