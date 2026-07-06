@@ -119,7 +119,7 @@ Use it alongside lockfile pinning, version cooldowns, `--ignore-scripts`, and pr
 - **v0.3 — sandbox execution:** run install hooks in an isolated container and observe syscalls/network.
 - **v0.4 — more ecosystems & lockfiles:** pnpm-lock.yaml, poetry.lock, uv.lock; Cargo/RubyGems/Go proxy. (yarn.lock classic+berry: ✅ shipped in v0.1.1)
 - **v0.5 — intel feeds:** OSV/malicious-package feeds, compromise-window lookups for incident response.
-- Rule plugins, SARIF output, allow/deny policy files, offline cache.
+- Rule plugins, allow/deny policy files, offline cache, private registry support (--registry/.npmrc).
 
 ## License
 
