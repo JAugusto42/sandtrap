@@ -3,8 +3,8 @@ package heuristics
 import (
 	"regexp"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
-	"github.com/sandtrap-sh/sandtrap/internal/registry"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/registry"
 )
 
 // CredentialAccess flags reads of developer/CI secret stores. The Shai-Hulud

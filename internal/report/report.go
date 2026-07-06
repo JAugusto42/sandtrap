@@ -9,8 +9,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
-	"github.com/sandtrap-sh/sandtrap/internal/runlog"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/runlog"
 )
 
 var useColor = isTerminal(os.Stdout)

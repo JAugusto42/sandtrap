@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
-	"github.com/sandtrap-sh/sandtrap/internal/heuristics"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/heuristics"
 )
 
 // SARIF (Static Analysis Results Interchange Format) 2.1.0 output. This is
@@ -90,7 +90,7 @@ func SARIF(w io.Writer, s *Summary, meta Meta) error {
 	run := &log.Runs[0]
 	run.Tool.Driver.Name = "sandtrap"
 	run.Tool.Driver.Version = meta.Version
-	run.Tool.Driver.InformationURI = "https://github.com/sandtrap-sh/sandtrap"
+	run.Tool.Driver.InformationURI = "https://github.com/JAugusto42/sandtrap"
 
 	// Emit the full rule catalog so viewers can render help even for rules
 	// with no findings in this run.

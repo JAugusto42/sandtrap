@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
-	"github.com/sandtrap-sh/sandtrap/internal/registry"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/registry"
 )
 
 // Inert synthetic fixtures modeled on the *shape* of real campaign payloads.

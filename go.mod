@@ -1,3 +1,3 @@
-module github.com/sandtrap-sh/sandtrap
+module github.com/JAugusto42/sandtrap
 
 go 1.22

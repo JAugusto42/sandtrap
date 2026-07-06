@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
-	"github.com/sandtrap-sh/sandtrap/internal/registry"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/registry"
 )
 
 // Obfuscation detects heavily obfuscated payloads. The Mini Shai-Hulud

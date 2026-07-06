@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
 )
 
 func TestLoadMatchAndWildcard(t *testing.T) {

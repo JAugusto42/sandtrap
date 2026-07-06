@@ -1,6 +1,6 @@
 BINARY  := sandtrap
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.0-dev)
-LDFLAGS := -s -w -X github.com/sandtrap-sh/sandtrap/internal/cli.Version=$(VERSION)
+LDFLAGS := -s -w -X github.com/JAugusto42/sandtrap/internal/cli.Version=$(VERSION)
 
 .PHONY: build test lint clean install release-snapshot
 

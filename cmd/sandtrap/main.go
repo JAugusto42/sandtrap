@@ -9,7 +9,7 @@ package main
 import (
 	"os"
 
-	"github.com/sandtrap-sh/sandtrap/internal/cli"
+	"github.com/JAugusto42/sandtrap/internal/cli"
 )
 
 func main() {

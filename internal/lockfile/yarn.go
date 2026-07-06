@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
 )
 
 // parseYarnLock handles both yarn classic (v1) and yarn berry (v2+) lockfiles.

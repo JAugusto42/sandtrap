@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
 )
 
 // DefaultFile is auto-loaded from the scan directory when present.

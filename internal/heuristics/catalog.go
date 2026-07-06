@@ -27,7 +27,7 @@ func Catalog() map[string]RuleMeta {
 				"`sandtrap scan --write-baseline` so only NEW hook behavior fails future scans.",
 			References: []string{
 				"https://docs.npmjs.com/cli/v10/using-npm/scripts#life-cycle-scripts",
-				"https://github.com/sandtrap-sh/sandtrap#what-it-detects",
+				"https://github.com/JAugusto42/sandtrap#what-it-detects",
 			},
 		},
 		"obfuscation": {
@@ -43,7 +43,7 @@ func Catalog() map[string]RuleMeta {
 				"decodes-and-executes content you cannot account for, remove the package and rotate credentials that " +
 				"were available to any machine that installed it.",
 			References: []string{
-				"https://github.com/sandtrap-sh/sandtrap#what-it-detects",
+				"https://github.com/JAugusto42/sandtrap#what-it-detects",
 			},
 		},
 		"exfiltration": {
@@ -58,7 +58,7 @@ func Catalog() map[string]RuleMeta {
 				"tokens, GitHub PATs, cloud keys, CI secrets). Search CI logs for outbound calls to the reported " +
 				"endpoint to scope the exposure window.",
 			References: []string{
-				"https://github.com/sandtrap-sh/sandtrap#what-it-detects",
+				"https://github.com/JAugusto42/sandtrap#what-it-detects",
 			},
 		},
 		"credential-access": {
@@ -73,7 +73,7 @@ func Catalog() map[string]RuleMeta {
 				"package and rotate the specific credentials referenced in the finding. Scope tokens minimally " +
 				"(granular npm tokens, fine-grained PATs) so a single theft cannot cascade.",
 			References: []string{
-				"https://github.com/sandtrap-sh/sandtrap#what-it-detects",
+				"https://github.com/JAugusto42/sandtrap#what-it-detects",
 			},
 		},
 		"fresh-publish": {
@@ -87,7 +87,7 @@ func Catalog() map[string]RuleMeta {
 				"structurally: pin exact versions in lockfiles and adopt a cooldown policy (only upgrade to versions " +
 				"that have survived a few days).",
 			References: []string{
-				"https://github.com/sandtrap-sh/sandtrap#what-it-detects",
+				"https://github.com/JAugusto42/sandtrap#what-it-detects",
 			},
 		},
 	}

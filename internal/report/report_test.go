@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
 )
 
 func sampleSummary() *Summary {

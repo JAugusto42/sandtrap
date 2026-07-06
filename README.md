@@ -12,7 +12,7 @@ Sandtrap is a behavioral supply chain scanner for npm and PyPI. Instead of match
 ## Install
 
 ```sh
-go install github.com/sandtrap-sh/sandtrap/cmd/sandtrap@latest
+go install github.com/JAugusto42/sandtrap/cmd/sandtrap@latest
 # or grab a prebuilt binary from Releases
 ```
 
@@ -40,7 +40,7 @@ Exit codes: `0` ok · `2` risk threshold reached · `3` analysis errors (with `-
 ```yaml
 - name: Supply chain scan
   run: |
-    go install github.com/sandtrap-sh/sandtrap/cmd/sandtrap@latest
+    go install github.com/JAugusto42/sandtrap/cmd/sandtrap@latest
     sandtrap scan --fail-on high --format sarif --output sandtrap.sarif .
 - name: Upload to GitHub code scanning
   if: always()

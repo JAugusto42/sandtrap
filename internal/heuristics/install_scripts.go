@@ -4,8 +4,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
-	"github.com/sandtrap-sh/sandtrap/internal/registry"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/registry"
 )
 
 // InstallScripts flags lifecycle hooks that execute code automatically at

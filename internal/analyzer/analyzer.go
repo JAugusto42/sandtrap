@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sandtrap-sh/sandtrap/internal/registry"
+	"github.com/JAugusto42/sandtrap/internal/registry"
 )
 
 // Rule is re-declared here (structurally identical to heuristics.Rule) so the

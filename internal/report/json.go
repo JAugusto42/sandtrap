@@ -5,8 +5,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
-	"github.com/sandtrap-sh/sandtrap/internal/heuristics"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/heuristics"
 )
 
 // Meta carries run-level context the CLI knows and the report layer doesn't.
@@ -54,7 +54,7 @@ func JSON(w io.Writer, s *Summary, meta Meta) error {
 	r.Schema = "sandtrap-report/1"
 	r.Tool.Name = "sandtrap"
 	r.Tool.Version = meta.Version
-	r.Tool.Homepage = "https://github.com/sandtrap-sh/sandtrap"
+	r.Tool.Homepage = "https://github.com/JAugusto42/sandtrap"
 
 	r.Scan.StartedAt = time.Now().Add(-s.Elapsed).UTC()
 	r.Scan.DurationMS = s.Elapsed.Milliseconds()

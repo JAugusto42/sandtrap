@@ -14,12 +14,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
-	"github.com/sandtrap-sh/sandtrap/internal/baseline"
-	"github.com/sandtrap-sh/sandtrap/internal/heuristics"
-	"github.com/sandtrap-sh/sandtrap/internal/lockfile"
-	"github.com/sandtrap-sh/sandtrap/internal/report"
-	"github.com/sandtrap-sh/sandtrap/internal/runlog"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/baseline"
+	"github.com/JAugusto42/sandtrap/internal/heuristics"
+	"github.com/JAugusto42/sandtrap/internal/lockfile"
+	"github.com/JAugusto42/sandtrap/internal/report"
+	"github.com/JAugusto42/sandtrap/internal/runlog"
 )
 
 // Version is stamped at build time via -ldflags.

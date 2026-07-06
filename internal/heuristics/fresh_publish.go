@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
-	"github.com/sandtrap-sh/sandtrap/internal/registry"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/registry"
 )
 
 // FreshPublish raises awareness for versions published very recently. The

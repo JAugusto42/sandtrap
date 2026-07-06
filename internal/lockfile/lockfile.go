@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sandtrap-sh/sandtrap/internal/analyzer"
+	"github.com/JAugusto42/sandtrap/internal/analyzer"
 )
 
 // Discover walks dir (non-recursively, then one level of common subdirs is
