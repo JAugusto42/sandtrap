@@ -12,7 +12,10 @@ test:
 
 lint:
 	go vet ./...
-	gofmt -l . | tee /dev/stderr | wc -l | grep -q '^0$$'
+	@files=$$(gofmt -l .); \
+	if [ -n "$$files" ]; then \
+		echo "gofmt needs to run on:"; echo "$$files"; exit 1; \
+	fi
 
 install:
 	go install -trimpath -ldflags "$(LDFLAGS)" ./cmd/$(BINARY)
