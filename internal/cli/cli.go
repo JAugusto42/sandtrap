@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -22,8 +23,28 @@ import (
 	"github.com/JAugusto42/sandtrap/internal/runlog"
 )
 
+// devVersion is the in-source default. Release builds override it via
+// -ldflags (see Makefile); `go install module@version` binaries get their
+// version from the embedded build info instead.
+const devVersion = "0.1.0-dev"
+
 // Version is stamped at build time via -ldflags.
-var Version = "0.1.0-dev"
+var Version = devVersion
+
+// effectiveVersion resolves the best version string available: the ldflags
+// stamp when present, else the module version Go embeds in binaries built
+// with `go install module@version`, else the dev default.
+func effectiveVersion() string {
+	if Version != devVersion {
+		return Version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		if v := bi.Main.Version; v != "" && v != "(devel)" {
+			return v
+		}
+	}
+	return Version
+}
 
 const usage = `sandtrap — behavioral supply chain scanner for npm and PyPI
 
@@ -56,6 +77,7 @@ Examples:
 
 // Run is the real entry point; it returns the process exit code.
 func Run(args []string) int {
+	Version = effectiveVersion()
 	if len(args) == 0 {
 		fmt.Fprint(os.Stderr, usage)
 		return 64
