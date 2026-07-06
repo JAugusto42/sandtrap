@@ -75,7 +75,7 @@ func (c *PyPIClient) Fetch(ctx context.Context, name, version string) (*Artifact
 		meta.PublishedAt = t
 	}
 
-	raw, err := download(chosen.URL)
+	raw, err := download(ctx, chosen.URL)
 	if err != nil {
 		return nil, fmt.Errorf("pypi download: %w", err)
 	}

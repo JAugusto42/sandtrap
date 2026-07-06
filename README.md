@@ -66,6 +66,10 @@ sandtrap scan . --verbose --format json --output report.json
 # → report.json (risk report) + sandtrap.log (execution record) + live progress on stderr
 ```
 
+## Network resilience
+
+Real-world scans hit flaky links. Sandtrap layers three defenses: every registry request retries up to 3× with backoff; the per-package `--timeout` budget truly bounds downloads (no global body-read timeout that kills large tarballs on slow connections); and after the main pass, an automatic **retry pass** re-fetches every transiently-failed package with reduced concurrency (4 workers, doubled timeout) before the report is produced — permanent errors (404s) are not retried. On very poor connections, additionally lower the initial pressure with `--workers 4 --timeout 3m`.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full architecture walkthrough and step-by-step guides for adding lockfile formats, ecosystems, detection rules and output formats.

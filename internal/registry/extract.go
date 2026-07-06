@@ -5,8 +5,10 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"errors"
 	"io"
+	"net/http"
 	"path"
 	"strings"
 	"time"
@@ -134,15 +136,21 @@ func extractZip(raw []byte) ([]File, error) {
 	return files, nil
 }
 
-// download fetches a URL enforcing MaxArchiveBytes, retrying once on
-// transient network failures (HTTP/2 stream resets, timeouts, 5xx).
-func download(url string) ([]byte, error) {
+// download fetches a URL enforcing MaxArchiveBytes, retrying on transient
+// network failures (HTTP/2 stream resets, connection resets, timeouts, 5xx).
+// The context bounds the whole operation so the per-package --timeout budget
+// truly limits downloads — critical on slow or flaky links.
+func download(ctx context.Context, url string) ([]byte, error) {
 	var lastErr error
 	for attempt := 0; attempt < 3; attempt++ {
 		if attempt > 0 {
-			time.Sleep(time.Duration(attempt) * 700 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(time.Duration(attempt) * 700 * time.Millisecond):
+			}
 		}
-		buf, retryable, err := downloadOnce(url)
+		buf, retryable, err := downloadOnce(ctx, url)
 		if err == nil {
 			return buf, nil
 		}
@@ -154,10 +162,14 @@ func download(url string) ([]byte, error) {
 	return nil, lastErr
 }
 
-func downloadOnce(url string) (buf []byte, retryable bool, err error) {
-	resp, err := httpClient.Get(url)
+func downloadOnce(ctx context.Context, url string) (buf []byte, retryable bool, err error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, true, err // network-level failure: worth one retry
+		return nil, false, err
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, true, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {

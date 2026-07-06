@@ -256,7 +256,47 @@ func execute(pkgs []analyzer.Package, c *commonFlags) int {
 	an := analyzer.New(rules, opts)
 
 	quietStream := c.quiet || (c.output == "" && c.format != "text")
+	scanStart := time.Now()
 	summary := report.Collect(os.Stderr, an.Run(ctx, pkgs), quietStream, lg)
+
+	// Retry pass: fetch failures on flaky links are usually transient and
+	// aggravated by concurrency pressure. Re-run only the errored packages
+	// with reduced parallelism and a doubled per-package budget, then merge.
+	if summary.Errors > 0 && ctx.Err() == nil {
+		var failed []analyzer.Package
+		for _, r := range summary.Results {
+			if r.Err == "" || permanentError(r.Err) {
+				continue
+			}
+			failed = append(failed, r.Package)
+		}
+		if len(failed) > 0 {
+			if !c.quiet {
+				fmt.Fprintf(os.Stderr, "\nsandtrap: retrying %d failed package(s) with reduced concurrency...\n", len(failed))
+			}
+			lg.Event("INFO", "retry pass starting failed=%d workers=4 timeout=%s", len(failed), c.timeout*2)
+			retryOpts := analyzer.Options{Workers: 4, PackageTimeout: c.timeout * 2}
+			if bl != nil {
+				retryOpts.Suppress = bl.Suppress
+			}
+			retried := report.Collect(os.Stderr, analyzer.New(rules, retryOpts).Run(ctx, failed), quietStream, lg)
+
+			merged := make(map[string]analyzer.Result, len(retried.Results))
+			for _, r := range retried.Results {
+				merged[r.Package.String()] = r
+			}
+			for i, r := range summary.Results {
+				if r.Err == "" {
+					continue
+				}
+				if nr, ok := merged[r.Package.String()]; ok {
+					summary.Results[i] = nr
+				}
+			}
+			summary = report.Rebuild(summary.Results, time.Since(scanStart))
+			lg.Event("INFO", "retry pass complete remaining_errors=%d", summary.Errors)
+		}
+	}
 
 	if c.writeBaseline {
 		out := blPath
@@ -318,4 +358,9 @@ func execute(pkgs []analyzer.Package, c *commonFlags) int {
 func fileExists(p string) bool {
 	st, err := os.Stat(p)
 	return err == nil && !st.IsDir()
+}
+
+// permanentError reports fetch errors that a retry cannot fix.
+func permanentError(msg string) bool {
+	return strings.Contains(msg, "not found") || strings.Contains(msg, "unsupported")
 }

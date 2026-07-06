@@ -49,11 +49,15 @@ type Client interface {
 }
 
 // httpClient is shared by all registry clients: sane timeouts, no surprises.
+// No global Client.Timeout: it would bound the ENTIRE body read, killing
+// large tarballs on slow links. The per-package context (--timeout) bounds
+// each operation instead; phase timeouts below catch dead connections.
 var httpClient = &http.Client{
-	Timeout: 60 * time.Second,
 	Transport: &http.Transport{
 		MaxIdleConnsPerHost:   8,
 		ResponseHeaderTimeout: 30 * time.Second,
+		TLSHandshakeTimeout:   15 * time.Second,
+		IdleConnTimeout:       60 * time.Second,
 	},
 }
 

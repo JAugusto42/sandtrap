@@ -93,7 +93,7 @@ func (c *NPMClient) Fetch(ctx context.Context, name, version string) (*Artifact,
 		meta.FirstPublishedAt = t
 	}
 
-	raw, err := download(v.Dist.Tarball)
+	raw, err := download(ctx, v.Dist.Tarball)
 	if err != nil {
 		return nil, fmt.Errorf("npm tarball: %w", err)
 	}

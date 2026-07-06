@@ -131,3 +131,21 @@ func TestSARIFEmptyScanIsValid(t *testing.T) {
 		t.Fatal("clean scans must emit an empty results array, not null (spec requirement)")
 	}
 }
+
+func TestRebuildAfterRetryMerge(t *testing.T) {
+	results := []analyzer.Result{
+		{Package: analyzer.Package{Ecosystem: analyzer.NPM, Name: "a", Version: "1"}, Risk: analyzer.RiskClean},
+		{Package: analyzer.Package{Ecosystem: analyzer.NPM, Name: "b", Version: "1"}, Risk: analyzer.RiskHigh, Score: 40, Suppressed: 1},
+		{Package: analyzer.Package{Ecosystem: analyzer.NPM, Name: "c", Version: "1"}, Err: "still failing"},
+	}
+	s := Rebuild(results, 5*time.Second)
+	if s.Scanned != 3 || s.Errors != 1 || s.Suppressed != 1 {
+		t.Fatalf("aggregates wrong: %+v", s)
+	}
+	if s.worst != analyzer.RiskHigh || s.ByRisk["HIGH"] != 1 || s.ByRisk["CLEAN"] != 2 {
+		t.Fatalf("risk aggregation wrong: worst=%v byRisk=%v", s.worst, s.ByRisk)
+	}
+	if s.Results[0].Risk != analyzer.RiskHigh {
+		t.Fatal("results must be sorted worst-first")
+	}
+}

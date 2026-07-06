@@ -113,6 +113,27 @@ func streamLine(w io.Writer, res analyzer.Result) {
 		riskColor(res.Risk), res.Package, res.Score, len(res.Findings))
 }
 
+// Rebuild recomputes a Summary's aggregates from its Results slice. Used
+// after the retry pass merges fresh results over previously errored ones.
+func Rebuild(results []analyzer.Result, elapsed time.Duration) *Summary {
+	s := &Summary{ByRisk: map[string]int{}, Elapsed: elapsed, Results: results}
+	for _, res := range results {
+		s.Scanned++
+		if res.Err != "" {
+			s.Errors++
+		}
+		s.ByRisk[res.Risk.String()]++
+		s.Suppressed += res.Suppressed
+		if res.Risk > s.worst {
+			s.worst = res.Risk
+		}
+	}
+	sort.SliceStable(s.Results, func(i, j int) bool {
+		return s.Results[i].Risk > s.Results[j].Risk
+	})
+	return s
+}
+
 // Terminal prints the detailed human report for every non-clean package.
 func Terminal(w io.Writer, s *Summary) {
 	fmt.Fprintln(w)
